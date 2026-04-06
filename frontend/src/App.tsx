@@ -23,7 +23,8 @@ const App: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        if (nakama.getConnectionState() !== "connected" || nakama.getConnectionState() !== "connecting") {
+        if (nakama.getConnectionState() !== "connected" && nakama.getConnectionState() !== "connecting") {
+          console.log("connecting to nakama")
           await nakama.connect();
         }
       } catch (error) {

@@ -74,9 +74,8 @@ const Leaderboard: React.FC<Props> = ({ onBack }) => {
               {records.map((record, index) => (
                 <tr
                   key={record.userId}
-                  className={`leaderboard-row ${
-                    record.userId === userId ? "my-rank" : ""
-                  } ${index < 3 ? "top-rank" : ""}`}
+                  className={`leaderboard-row ${record.userId === userId ? "my-rank" : ""
+                    } ${index < 3 ? "top-rank" : ""}`}
                   id={`rank-${record.rank}`}
                 >
                   <td className="col-rank">

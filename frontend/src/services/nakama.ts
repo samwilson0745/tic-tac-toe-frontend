@@ -155,22 +155,37 @@ class NakamaService {
       const savedRefreshToken = localStorage.getItem("ttt_refresh_token");
 
       if (savedToken && savedRefreshToken) {
-        const restoredSession = Session.restore(savedToken, savedRefreshToken);
-        if (!restoredSession.isexpired(Date.now() / 1000)) {
-          this.session = restoredSession;
-        } else if (!restoredSession.isrefreshexpired(Date.now() / 1000)) {
-          try {
-            this.session = await this.client.sessionRefresh(restoredSession);
-            this.persistSession();
-          } catch {
-            this.session = null;
+        try {
+          const restoredSession = Session.restore(savedToken, savedRefreshToken);
+          // Verify account exists on backend (prevents stale storage after DB wipe)
+          const account = await this.client.getAccount(restoredSession);
+          if (!account.user) {
+            throw new Error("Session points to different user");
           }
+
+          if (!restoredSession.isexpired(Date.now() / 1000)) {
+            this.session = restoredSession;
+          } else if (!restoredSession.isrefreshexpired(Date.now() / 1000)) {
+            try {
+              this.session = await this.client.sessionRefresh(restoredSession);
+              this.persistSession();
+            } catch {
+              this.session = null;
+            }
+          }
+        } catch (error) {
+          console.warn("Session points to missing user (wiped). Clearing storage.");
+          localStorage.removeItem("ttt_session_token");
+          localStorage.removeItem("ttt_refresh_token");
+          // localStorage.removeItem("ttt_device_id");
+          this.session = null;
         }
       }
 
       // Authenticate if no valid session
       if (!this.session) {
-        this.session = await this.client.authenticateDevice(deviceId, true, deviceId.substring(0, 8));
+        // Corrected: Remove substring(0, 8) to solve 409 conflicts on fresh DB
+        this.session = await this.client.authenticateDevice(deviceId, true);
         this.persistSession();
       }
 
@@ -198,15 +213,21 @@ class NakamaService {
 
   async updateUsername(username: string): Promise<void> {
     if (!this.client || !this.session) throw new Error("Not connected");
-    
+
     try {
       // 1. Update the account on backend
       await this.client.updateAccount(this.session, { username });
-      
-      // 2. The old cached JWT token still contains the old username payload.
-      // Instead of doing a session refresh which may not rewrite claims immediately,
-      // we forcibly re-authenticate the device to pull a completely fresh JWT.
+
+      // 2. Sync the leaderboard record with the new name
+      await this.client.rpc(this.session, "update_leaderboard_username", { username });
+
+      this.session.username = username;
+      // 3. Pull a completely fresh JWT token from the server.
+      // Even though we updated the name on the backend, the current this.session.token 
+      // still has the old name encoded inside it. We must re-authenticate to get a token
+      // that contains the new 'usn' claim.
       const deviceId = localStorage.getItem("ttt_device_id");
+
       if (deviceId) {
         this.session = await this.client.authenticateDevice(deviceId, true);
         this.persistSession();
@@ -318,7 +339,7 @@ class NakamaService {
         : result.payload;
       return parsed.rooms || [];
     }
-    
+
     return [];
   }
 

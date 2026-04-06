@@ -54,7 +54,7 @@ const HomeScreen: React.FC<Props> = ({
       setIsEditingName(false);
       return;
     }
-    
+
     // Nakama strict username validation
     const validUsernameRegex = /^[a-zA-Z0-9][a-zA-Z0-9._]*[a-zA-Z0-9]$/;
     if (!validUsernameRegex.test(trimmed)) {
@@ -65,7 +65,7 @@ const HomeScreen: React.FC<Props> = ({
     try {
       setIsSavingName(true);
       await nakama.updateUsername(trimmed);
-      setUsername(nakama.getUsername());
+      setUsername(trimmed);
       setIsEditingName(false);
     } catch (error) {
       console.error("Failed to update username:", error);
@@ -116,8 +116,8 @@ const HomeScreen: React.FC<Props> = ({
                     if (e.key === "Escape") setIsEditingName(false);
                   }}
                 />
-                <button 
-                  onClick={handleSaveName} 
+                <button
+                  onClick={handleSaveName}
                   disabled={isSavingName}
                   style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-primary)" }}
                   title="Save Name"
@@ -140,7 +140,7 @@ const HomeScreen: React.FC<Props> = ({
                 </button>
               </div>
             )}
-            
+
             {stats && stats.rank > 0 && !isEditingName && (
               <span className="player-rank">Rank #{stats.rank}</span>
             )}

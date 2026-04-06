@@ -23,7 +23,9 @@ const App: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        await nakama.connect();
+        if (nakama.getConnectionState() !== "connected" || nakama.getConnectionState() !== "connecting") {
+          await nakama.connect();
+        }
       } catch (error) {
         console.error("Failed to initialize:", error);
         setInitError("Failed to connect to game server. Make sure Nakama is running.");
